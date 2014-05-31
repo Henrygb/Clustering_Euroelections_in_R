@@ -7,13 +7,13 @@ The data used is voting for the 2014 European Parliament elections in London, wh
 
 Different clustering methods inevitably produced different results, but it seems that clustering of boroughs may be more robust to different methods than clustering of larger parties when smaller parties are present in the analysis. 
 
-This is also an exercise in reproducible research so the code and data is available on GitHub at [https://github.com/Henrygb/Clustering_Euroelections_in_and literate programming R](https://github.com/Henrygb/Clustering_Euroelections_in_R) and this is prepared using RStudio 0.98.501 with text and code combined in a single document.
+This is also an exercise in reproducible research and literate programming, so the code and data is available on GitHub at [https://github.com/Henrygb/Clustering_Euroelections_in_R](https://github.com/Henrygb/Clustering_Euroelections_in_R) hving been prepared using [RStudio](https://www.rstudio.com/) 0.98.501 with text and code combined in a single document.
  
 
 Data preparation
 ================
 
-THe data needs to be read in from a csv file and then reduced to a matrix of votes by borough and party with the totals removed after checking them. This step can be avoided by using the code in Annex A below. 
+The data needs to be read in from a csv file and then reduced to a matrix of votes by borough and party with the totals removed after checking them. The data preparation step can be avoided by using the code in Annex A below. 
 
 ```{r}
 ## Clustering London boroughs and political parties 
@@ -64,25 +64,27 @@ data.frame(overall_total=sum(votes))
 ```
 
 We can easily reproduce the [D'Hondt allocation of London's 8 seats](http://londoneuroelections.org.uk/wp-content/uploads/2014/01/European-Election-Results-for-London-Region-2014-181KB-pdf.pdf) in the European Parliament, with 4 going to Labour, 2 to the Conservatives, 1 UKIP and 1 Green.
+
 ```{r}
 seats <- 8
-quotients <- as.vector(outer(colSums(votes), 1:seats, "/"))
-names(quotients) <- rep(colnames(votes), seats)
-quotients <- quotients[-which(names(quotients)=="Rejected Votes")]
-table(names(quotients[order(quotients, decreasing = TRUE)][1:seats]))
+partyvotes <- colSums(votes)                             # add up votes across London by party
+partyvotes <- partyvotes[-which(names(partyvotes)=="Rejected Votes")] # exclude rejected votes
+quotients  <- as.vector(outer(partyvotes, 1:seats, "/"))              # divide votes by divisors
+names(quotients) <- rep(names(partyvotes), seats)                     # name quotients by party
+table(names(quotients[order(quotients, decreasing = TRUE)][1:seats])) # count how many high quotients
 ```
 
-Clustering
-==========
+Results from Clustering
+=======================
 
 The clustering below takes two approaches, hierarchical clustering and *k*-means.  
 
 Boroughs
 --------
 
-Boroughs are clustered on the basis of of the party shares of the votes in each borough.
+Boroughs are clustered on the basis of the party shares of the votes in each borough.
 
-To provide a bit of comparability, the clustering attempts to create six clusters of the boroughs each time: looking at the dendrograms seems to suggest that this may not always be sensible, and if the next branch almost has the same height as the previous branch then five or seven clusters could be a better choice.
+To provide a bit of comparability between methods, the clustering attempts to create six clusters of the boroughs each time: looking at the dendrograms seems to suggest that this may not always be sensible, and if the next branch almost has the same height as the previous branch then five or seven clusters could be a better choice.
 
 ```{r}
 library(cluster) # for cluster plots
@@ -153,7 +155,7 @@ data.frame(cluster=fit$cluster[order(fit$cluster)])
 
 Another approach would be to restrict the analysis to the five largest parties and their shares of the five-party totals in each borough. We could also exclude the small City of London to avoid it affecting borough clusters. Doing the same analysis produces the following.  
 
-One noticeable effect is that two components of the cluster plot change (see in particular how Barking and Dagenham moves);  it should not be a suprise that they explain mor of the point variability as much of the variability has been removed with the minor parties.  
+One noticeable effect is that two components of the cluster plot change (see in particular how Barking and Dagenham moves);  it should not be a surprise that they explain more of the point variability as much of the variability has been removed with the minor parties.  
 
 ```{r}
 
@@ -233,7 +235,7 @@ data.frame(cluster=fit$cluster[order(fit$cluster)])
 
 ```
 
-Although the clusters change with the different details of the clustering, there are some cluster relationships which seem faily stable: the outer south-western boroughs of Sutton, Kingston upon Thames, Richmond upon Thames, and usually Sutton, are often together; the outer eastern and south-eastern boroughs of Havering, Bexley, and Bromley are often together; the inner boroughs of Lambeth, Southwark, Lewisham, Islington, Camden, and Brent are often together, sometimes with Tower Hamlets and Newham; the more prosperous boroughs of the City of Westminster, Kensington and Chelsea, Hammersmith and Fulham, Wandsworth, Barnet, Harrow, and Croydon are often together; and the outer boroughs of Greenwich, Redbridge, Waltham Forest, Enfield, Ealing and Hounslow are often together.  Merton and Croydon are often with one of these two later groups, while Hillingdon is often with either with the outer eastern cluster (despite being in the west) or with the more prosperous cluster. Barking and Dagenham is often in its own cluster or with Newham and Tower Hamlets.           
+Although the clusters change with the different details of the clustering, there are some cluster relationships which seem fairly stable: the outer south-western boroughs of Sutton, Kingston upon Thames, Richmond upon Thames, and usually Sutton, are often together; the outer eastern and south-eastern boroughs of Havering, Bexley, and Bromley are often together; the inner boroughs of Lambeth, Southwark, Lewisham, Islington, Camden, and Brent are often together, sometimes with Tower Hamlets and Newham; the more prosperous boroughs of the City of Westminster, Kensington and Chelsea, Hammersmith and Fulham, Wandsworth, Barnet, Harrow, and Croydon are often together; and the outer boroughs of Greenwich, Redbridge, Waltham Forest, Enfield, Ealing and Hounslow are often together.  Merton and Croydon are often with one of these two later groups, while Hillingdon is often with either with the outer eastern cluster (despite being in the west) or with the more prosperous cluster. Barking and Dagenham is often in its own cluster or with Newham and Tower Hamlets.           
 
 A lot of this makes sense, either geographically, or in terms of which parties are or have historically been politically competitive in these particular boroughs.
 
@@ -241,16 +243,30 @@ A lot of this makes sense, either geographically, or in terms of which parties a
 Parties
 -------
 
-We repeat the analysis with the parties, but this time looking at what proportion of their votes come from different boroughs: this has a rescaling effect as these propoertions add up to 1 for each party whether they are large or small.  It is not longer possible to draw the clusterplots in the same way as they depend on principal component analysis, which does not work when there are more units than variables, i.e. when there are more boroughs than parties.  
+We can repeat the analysis with the parties, but doing so on the basis of each party's vote share in each borough may be misleading: larger parties will tend to get higher vote shares than smaller parties, so the clustering may be as much an indication of party size as anything else. With and example of six clusters and hierarchical clustering, it is no surprise if we get the five largest parties in individual clusters and all the smaller parties plus the rejected votes in the sixth cluster. 
 
-Looking at all the parties, it is clear that parties clustered together need not have similar ideologies. For example the [4 Freedoms Party](http://www.4freedomsparty.eu/) appears to be a centre-right pro-EU party while [An Independence from Europe](http://www.aipmep.org/) appears to be a centre-left anti-EU party, but the two parties' vote distributions and indeed their vote totals were very similar; one posible explanation could be that both these small parties chose names which would put them at the top of the ballot paper, with the 4 Freedoms Party getting more votes from boroughs where a disproportionate number of people simply voted for the party at the top, and An Independence from Europe got votes from similar types of people in similar places who chose the first anti-EU party they found rather than searching for NO2EU or UKIP at the bottom of the ballot paper. 
+```{r}
+numcluster <- 6  # arbitrary
+
+# Ward Hierarchical Clustering with Euclidean distance
+d <- dist(t(votes /rowSums(votes)), method = "euclidean") # distance matrix
+fit <- hclust(d, method="ward")
+plot(fit, main="Ward Hierarchical Clustering with Euclidean distance 
+     using party vote shares") # display dendogram
+groups <- cutree(fit, k=numcluster) # cut tree into clusters
+# draw dendogram with red borders around the clusters
+rect.hclust(fit, k=numcluster, border="red")
+```
+
+A better approach could be to look at what proportion of each party's votes come from different boroughs: this has a desirable rescaling effect as these proportions add up to 1 across the boroughs for each party whether they are large or small.  It is not longer possible to draw the clusterplots in the same way as before since they depend on principal component analysis, which does not work when there are more units than variables, i.e. when there are more boroughs than parties.  
+
+Looking at all the parties, it is clear that parties clustered together need not have similar ideologies: we will later look at the surprisingly close relationship between votes or lack of votes for the two small parties at the top of the ballot paper with opposing politics. 
 
 The different clustering analyses did not find a stable cluster for the Green Party: it was sometimes clustered with the Labour Party, sometimes with the Conservative Party, sometimes with the Liberal Democrats, and sometimes with none of the other larger parties, though usually with the National Health Action Party.  Nor did it find a stable cluster for the Conservative Party, which was sometimes clustered with UKIP, sometimes with the Labour Party, and sometimes with the Green Party. Curiously, it was never clustered with its current national coalition partner the Liberal Democrats.     
 
 
 
 ```{r}
-library(cluster) # for cluster plots
 numcluster <- 6  # arbitrary
 
 # Ward Hierarchical Clustering with Euclidean distance
@@ -344,18 +360,76 @@ data.frame(cluster=fit$cluster[order(fit$cluster)])
 
 ```
 
+Parties at the top of the ballot paper
+--------------------------------------
+
+Some parties were commonly clustered together for reasons which could not have been ideological.
+
+For example the [4 Freedoms Party](http://www.4freedomsparty.eu/) appears to be a centre-right pro-EU party while [An Independence from Europe](http://www.aipmep.org/) appears to be a centre-left anti-EU party, but the two parties' vote distributions and indeed their vote totals were very similar. A possible explanation could be that both these small parties chose names which would put them at the top of the ballot paper, with the 4 Freedoms Party getting more votes from boroughs where a disproportionate number of people simply voted for the party at the top, and An Independence from Europe got votes from similar types of people in similar places who chose the first anti-EU party they found rather than searching for others such as NO2EU or UKIP at the bottom of the ballot paper. 
+
+We could look at the number of votes each of these two parties obtained in each borough: these are close, with a correlation of 0.93 between them.  But part of this correlation is simply that they each received fewer of their votes in the smallest borough and more in the larger boroughs because of the numbers of votes available.  After removing the size effect by looking at their vote shares in each borough, the correlation between them is still high at about 0.80.  
+
+As a contrasting example, between Labour and the Conservatives the vote share correlation was -0.77, and it should not be a suprise among larger parties that when one got a larger share, the other often got a smaller share.  Looking at the number of votes by borough would almost have eliminated this because of the borough size effect, shrinking the correlation between Labour and the Conservatives to -0.03.   
+
+```{r}
+# Looking at numbers of votes by borough
+cor(votes[,1], votes[,2])  
+plot(votes[,1], votes[,2],
+     main="Votes for first two parties on the ballot by borough",
+     xlab=colnames(votes)[1], ylab=colnames(votes)[2]  )
+
+# Looking at vote shares by borough
+cor((votes/rowSums(votes))[,1], (votes/rowSums(votes))[,2])
+plot((votes/rowSums(votes))[,1], (votes/rowSums(votes))[,2],
+     xlim=c(0,0.02), ylim=c(0,0.02),
+     main="Vote shares for first two parties on the ballot by borough",
+     xlab=colnames(votes)[1], ylab=colnames(votes)[2]  )
+
+# By contrast look at Conservative Labour correlation 
+cor(votes[,"Conservative Party"], votes[,"Labour Party"])
+cor((votes/rowSums(votes))[,"Conservative Party"], (votes/rowSums(votes))[,"Labour Party"])
+```
+
+Together these two parties at the top of the ballot paper won 1.0% of votes in the City of London and between 1.6% and 1.8% in Kensington and Chelsea, Haringey, Hackney, Richmond upon Thames, and Wandsworth, but they won between 3.2% and 3.5% in Harrow, Tower Hamlets, Havering, Sutton, and Ealing.  This suggests that being first on the ballot may be more of an advantage in some places than others. 
+
+There is some apparent correlation between borough size (measured by total numbers of votes) and the combined vote shares of these two parties at 0.42.  Much of this comes from their low vote share in the two smallest boroughs, and excluding the City of London and Kensington & Chelsea would bring the correlation in the remaining 31 boroughs down to 0.15.  A possible confounding variable may be location: for example their votes might have tended to have been higher in outer parts of London where many larger boroughs are located.
+
+```{r}
+par(mar = c(11.1, 4.1, 4.1, 2.1)) # to fit long borough names
+# Barplot of vote shares by borough
+barplot(t((votes/rowSums(votes))[order(rowSums(votes[,1:2])/rowSums(votes)),1:2]), 
+        names.arg = rownames(votes)[order(rowSums(votes[,1:2])/rowSums(votes))],
+        cex.names = 1, las = 3, 
+        ylab="Fraction of votes in borough (0.010 indicates 1%)",
+        main = "Fraction of borough votes for first two parties on the ballot", 
+        legend.text = TRUE, 
+        args.legend = list(x = "topleft"))
+par(mar = c(5.1, 4.1, 4.1, 2.1)) # restore default parameters
+
+# Combined vote shares of these two parties by borough
+(rowSums(votes[,1:2])/rowSums(votes))[order(rowSums(votes[,1:2])/rowSums(votes))]
+
+# Correlation between borough total votes and votes shares of these two parties
+cor(rowSums(votes), rowSums(votes[,1:2])/rowSums(votes))
+# Correlation after excluding City of London and Kensington & Chelsea 
+cor(rowSums(votes)[-c(7,21)], rowSums(votes[-c(7,21),1:2])/rowSums(votes)[-c(7,21)])
+```
+
+
 Conclusion
 ==========
 
-Looking at different clustering algorithms on a single data set suggests that some cluster results are sensitive to the particular method used and to the presence of what may be distracting data, while other cluster results are more stable.
+Looking at different clustering algorithms on a single data set suggests that some cluster results are sensitive to the particular method used and to the presence of what may be distracting data, while other cluster results are more stable. In particular the clustering of London boroughs was for most of them fairly stable and made sense both geographically and politically.
 
-A possible lesson to draw from this is that it could be worth using more than one algortithm in other clustering exercises to identify whether results are dependent on the precise method used. 
+The clustering of political parties was not necessarily ideological, though it did suggest examples where some parties' voters tended to live in similar locations.
+
+A possible lesson to draw from this is that it could be worth using more than one algorithm in other clustering exercises to identify when results are dependent on the precise method used. 
 
 
 Annex A
 =======
 
-For those who want the `votes` matrix without using the csv file or the data preparation steps, they can just set `votes` to the output of this `dput` statement.
+For those who want the `votes` matrix without using the csv file or the data preparation step, they can just set `votes` to the output of this `dput` statement.
 
 ```{r}
 dput(votes) 
@@ -414,18 +488,20 @@ votes <- structure(c(777, 938, 999, 1038, 1034, 693, 18, 433, 1366, 1636,
 7861, 10677, 9164, 386, 767, 588, 1333, 694, 543, 7, 518, 872, 
 1326, 842, 579, 739, 466, 684, 852, 850, 779, 675, 474, 354, 
 342, 596, 612, 604, 1177, 919, 401, 685, 537, 3327, 898, 781), .Dim = c(33L, 
-18L), .Dimnames = list( c("Barking and Dagenham", "Barnet", "Bexley", 
+18L), .Dimnames = list(c("Barking and Dagenham", "Barnet", "Bexley", 
 "Brent", "Bromley", "Camden", "City of London", "City of Westminster", 
 "Croydon", "Ealing", "Enfield", "Greenwich", "Hackney", "Hammersmith and Fulham", 
 "Haringey", "Harrow", "Havering", "Hillingdon", "Hounslow", "Islington", 
 "Kensington and Chelsea", "Kingston upon Thames", "Lambeth", 
 "Lewisham", "Merton", "Newham", "Redbridge", "Richmond upon Thames", 
 "Southwark", "Sutton", "Tower Hamlets", "Waltham Forest", "Wandsworth"
-), c("4 Freedoms Party (UK EPP)", "An Independence from Europe", 
+), structure(c("4 Freedoms Party (UK EPP)", "An Independence from Europe", 
 "Animal Welfare Party", "British National Party", "Christian Peoples Alliance", 
 "Communities United Party", "Conservative Party", "English Democrats", 
 "Europeans Party", "Green Party", "Harmony Party", "Labour Party", 
 "Liberal Democrats", "National Health Action Party", "National Liberal Party - True Liberalism", 
-"NO2EU", "UK Independence Party (UKIP)", "Rejected Votes")))
+"NO2EU", "UK Independence Party (UKIP)", "Rejected Votes"), .Names = c("V2", 
+"V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", 
+"V13", "V14", "V15", "V16", "V17", "V18", "V19"))))
 ```
 
